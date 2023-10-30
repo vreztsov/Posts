@@ -37,7 +37,7 @@ data class ViewsInfo(
 )
 
 data class Post(
-    var id: Int = 0,
+    val id: Int = 0,
     val ownerId: Int,
     val fromId: Int,
     val createdBy: Int,
@@ -65,8 +65,7 @@ object WallService {
     }
 
     fun add(post: Post): Post {
-        post.id = ++id
-        posts += post
+        posts += post.copy(id = ++id)
         return posts.last()
     }
 
