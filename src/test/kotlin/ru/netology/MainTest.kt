@@ -61,7 +61,7 @@ class MainTest {
                 text = "Hello Kotlin!"
             )
         )
-        val postId = -firstPost.id
+        val postId = -firstPost.id!!
         val secondPost = Post(
             postId,
             2_323_445,
@@ -71,5 +71,6 @@ class MainTest {
             "Kotlin is wonderful!"
         )
         assertFalse(WallService.update(secondPost))
+
     }
 }
