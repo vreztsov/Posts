@@ -3,6 +3,7 @@ package ru.netology
 fun main() {
     WallService.add(
         Post(
+            id = 777,
             ownerId = 2_323_445,
             fromId = 234_845,
             createdBy = 0,
