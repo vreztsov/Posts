@@ -10,6 +10,30 @@ fun main() {
             text = "Hello Kotlin!"
         )
     )
+    val attachment: Attachment = PhotoAttachment(
+        Photo(
+            0,
+            0,
+            0,
+            0,
+            "Фото",
+            1_688_777_888,
+            emptyArray(),
+            1024,
+            768
+        )
+    )
+    whenSealed(attachment)
+}
+
+fun whenSealed(attachment: Attachment){
+    when (attachment){
+        is AudioAttachment -> println("This is AudioAttachment")
+        is VideoAttachment -> println("This is VideoAttachment")
+        is PhotoAttachment -> println("This is PhotoAttachment")
+        is DocumentAttachment -> println("This is DocumentAttachment")
+        is LinkAttachment -> println("This is LinkAttachment")
+    }
 }
 
 data class CommentsInfo(
@@ -92,6 +116,7 @@ data class Post(
     val views: ViewsInfo = ViewsInfo(),
     val postType: String = "post",
     val postSource: PostSource? = null,
+    val attachments: Array<Attachment> = emptyArray(),
     val geo: Geo? = null,
     val signerId: Int? = null,
     val copyHistory: Array<Post> = emptyArray(),
