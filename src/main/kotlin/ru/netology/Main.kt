@@ -1,7 +1,10 @@
 package ru.netology
 
+import ru.netology.exceptions.PostNotFoundException
+
 fun main() {
-    WallService.add(
+    val service = WallService()
+    service.add(
         Post(
             ownerId = 2_323_445,
             fromId = 234_845,
@@ -26,8 +29,8 @@ fun main() {
     whenSealed(attachment)
 }
 
-fun whenSealed(attachment: Attachment){
-    when (attachment){
+fun whenSealed(attachment: Attachment) {
+    when (attachment) {
         is AudioAttachment -> println("This is AudioAttachment")
         is VideoAttachment -> println("This is VideoAttachment")
         is PhotoAttachment -> println("This is PhotoAttachment")
@@ -100,7 +103,7 @@ data class Donut(
 )
 
 data class Post(
-    val id: Int? = null,
+    val id: Int = 0,
     val ownerId: Int,
     val fromId: Int,
     val createdBy: Int,
@@ -130,14 +133,60 @@ data class Post(
     val postponedId: Int? = null
 )
 
-object WallService {
+data class Comment(
+    val id: Int,
+    val fromId: Int,
+    val date: Int,
+    val text: String,
+    val donut: CommentDonut,
+    val replyToUser: Int,
+    val replyToComment: Int,
+    val attachments: Array<Attachment>,
+    val parentsStack: Array<Int>,
+    val thread: CommentThread
+)
+
+data class CommentThread(
+    val count: Int,
+    val items: Array<Comment>,
+    val canPost: Boolean,
+    val showReplyButton: Boolean,
+    val groupsCanPost: Boolean
+)
+
+data class CommentDonut(
+    val isDon: Boolean,
+    val placeholder: String
+)
+
+
+class WallService {
 
     private var id: Int = 0
     private var posts = emptyArray<Post>()
+    private var comments = emptyArray<Comment>()
 
     fun clear() {
         id = 0
         posts = emptyArray()
+        comments = emptyArray()
+    }
+
+    fun findPostById(postId: Int): Post? {
+        for (post in posts) {
+            if (post.id == postId) {
+                return post
+            }
+        }
+        return null
+    }
+
+    fun createComment(postId: Int, comment: Comment): Comment {
+        if (findPostById(postId) != null) {
+            comments += comment.copy(id = ++id)
+            return comments.last()
+        }
+        throw PostNotFoundException("No post with id $postId")
     }
 
     fun add(post: Post): Post {
