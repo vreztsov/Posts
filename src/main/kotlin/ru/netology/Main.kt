@@ -1,6 +1,6 @@
 package ru.netology
 
-import ru.netology.exceptions.PostNotFoundException
+import ru.netology.exceptions.*
 
 fun main() {
     val service = WallService()
@@ -146,6 +146,22 @@ data class Comment(
     val thread: CommentThread
 )
 
+data class Report(
+    val ownerId: Int,
+    val commentId: Int
+) {
+    private var reason: Int? = null
+    private val reasons = arrayOf(0,1,2,3,4,5,6,8)
+
+    constructor(ownerId: Int, commentId: Int, reason: Int): this(ownerId, commentId){
+        if (reasons.contains(reason)) {
+            this.reason = reason
+        } else {
+            throw ReasonNotFoundException("Reason #$reason is not found")
+        }
+    }
+}
+
 data class CommentThread(
     val count: Int,
     val items: Array<Comment>,
@@ -165,6 +181,7 @@ class WallService {
     private var id: Int = 0
     private var posts = emptyArray<Post>()
     private var comments = emptyArray<Comment>()
+    private var reports = emptyArray<Report>()
 
     fun clear() {
         id = 0
@@ -180,6 +197,14 @@ class WallService {
         }
         return null
     }
+    fun findCommentById(commentId: Int): Comment? {
+        for (comment in comments) {
+            if (comment.id == commentId) {
+                return comment
+            }
+        }
+        return null
+    }
 
     fun createComment(postId: Int, comment: Comment): Comment {
         if (findPostById(postId) != null) {
@@ -187,6 +212,12 @@ class WallService {
             return comments.last()
         }
         throw PostNotFoundException("No post with id $postId")
+    }
+
+    fun report(commentId: Int, reason: Int): Report{
+        val comment = findCommentById(commentId) ?: throw CommentNotFoundException("No comment with id $commentId")
+        reports += Report(comment.fromId, comment.id, reason)
+        return reports.last()
     }
 
     fun add(post: Post): Post {

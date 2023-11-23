@@ -2,7 +2,7 @@ package ru.netology
 
 import org.junit.Assert.*
 import org.junit.Test
-import ru.netology.exceptions.PostNotFoundException
+import ru.netology.exceptions.*
 
 class MainTest {
 
@@ -102,7 +102,7 @@ class MainTest {
     }
 
     @Test(expected = PostNotFoundException::class)
-    fun addCommentToNonExistingPost(){
+    fun addCommentToNonExistingPost() {
         val service = WallService()
         val firstPost = service.add(
             Post(
@@ -128,6 +128,97 @@ class MainTest {
                 getCommentThread()
             )
         )
+    }
+
+    @Test
+    fun reportComment() {
+        val service = WallService()
+        val firstPost = service.add(
+            Post(
+                ownerId = 2_323_445,
+                fromId = 234_845,
+                createdBy = 0,
+                date = 1_698_000_333,
+                text = "Hello Kotlin!"
+            )
+        )
+        val postId = firstPost.id
+        val firstComment = service.createComment(
+            postId, Comment(
+                0,
+                222,
+                1_698_000_444,
+                "This is spam",
+                getCommentDonut(),
+                0,
+                0,
+                emptyArray(),
+                emptyArray(),
+                getCommentThread()
+            )
+        )
+        val report = service.report(firstComment.id, 0)
+        assertNotNull(report)
+    }
+
+    @Test(expected = CommentNotFoundException::class)
+    fun reportNonExistingComment() {
+        val service = WallService()
+        val firstPost = service.add(
+            Post(
+                ownerId = 2_323_445,
+                fromId = 234_845,
+                createdBy = 0,
+                date = 1_698_000_333,
+                text = "Hello Kotlin!"
+            )
+        )
+        val postId = firstPost.id
+        val firstComment = service.createComment(
+            postId, Comment(
+                0,
+                222,
+                1_698_000_444,
+                "This is spam",
+                getCommentDonut(),
+                0,
+                0,
+                emptyArray(),
+                emptyArray(),
+                getCommentThread()
+            )
+        )
+        val report = service.report(-firstComment.id, 0)
+    }
+
+    @Test(expected = ReasonNotFoundException::class)
+    fun reportCommentWithNonExistingReason() {
+        val service = WallService()
+        val firstPost = service.add(
+            Post(
+                ownerId = 2_323_445,
+                fromId = 234_845,
+                createdBy = 0,
+                date = 1_698_000_333,
+                text = "Hello Kotlin!"
+            )
+        )
+        val postId = firstPost.id
+        val firstComment = service.createComment(
+            postId, Comment(
+                0,
+                222,
+                1_698_000_444,
+                "This is spam",
+                getCommentDonut(),
+                0,
+                0,
+                emptyArray(),
+                emptyArray(),
+                getCommentThread()
+            )
+        )
+        val report = service.report(firstComment.id, 10)
     }
 
     private fun getCommentDonut(): CommentDonut {
