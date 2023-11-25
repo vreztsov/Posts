@@ -1,4 +1,4 @@
-package ru.netology
+package ru.netology.attachments
 
 data class VideoAttachment(
     val video: Video
