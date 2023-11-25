@@ -3,11 +3,12 @@ package ru.netology
 import org.junit.Assert.*
 import org.junit.Test
 import ru.netology.exceptions.*
+import ru.netology.entities.*
 
 class MainTest {
 
     @Test
-    fun addPostTest() {
+    fun testAddPost() {
         val service = WallService()
         val postId = 0
         val addedPost = service.add(
@@ -24,7 +25,7 @@ class MainTest {
     }
 
     @Test
-    fun updatePostWithExistingIdTest() {
+    fun testUpdatePostWithExistingId() {
         val service = WallService()
         val firstPost = service.add(
             Post(
@@ -48,7 +49,7 @@ class MainTest {
     }
 
     @Test
-    fun updatePostWithNonExistingIdTest() {
+    fun testUpdatePostWithNonExistingId() {
         val service = WallService()
         val firstPost = service.add(
             Post(
@@ -72,7 +73,7 @@ class MainTest {
     }
 
     @Test
-    fun addCommentToExistingPost() {
+    fun testAddCommentToExistingPost() {
         val service = WallService()
         val firstPost = service.add(
             Post(
@@ -102,7 +103,7 @@ class MainTest {
     }
 
     @Test(expected = PostNotFoundException::class)
-    fun addCommentToNonExistingPost() {
+    fun testAddCommentToNonExistingPost() {
         val service = WallService()
         val firstPost = service.add(
             Post(
@@ -114,7 +115,7 @@ class MainTest {
             )
         )
         val postId = -firstPost.id
-        val firstComment = service.createComment(
+        service.createComment(
             postId, Comment(
                 0,
                 222,
@@ -131,7 +132,7 @@ class MainTest {
     }
 
     @Test
-    fun reportComment() {
+    fun testReportComment() {
         val service = WallService()
         val firstPost = service.add(
             Post(
@@ -162,7 +163,7 @@ class MainTest {
     }
 
     @Test(expected = CommentNotFoundException::class)
-    fun reportNonExistingComment() {
+    fun testReportNonExistingComment() {
         val service = WallService()
         val firstPost = service.add(
             Post(
@@ -188,11 +189,11 @@ class MainTest {
                 getCommentThread()
             )
         )
-        val report = service.report(-firstComment.id, 0)
+        service.report(-firstComment.id, 0)
     }
 
     @Test(expected = ReasonNotFoundException::class)
-    fun reportCommentWithNonExistingReason() {
+    fun testReportCommentWithNonExistingReason() {
         val service = WallService()
         val firstPost = service.add(
             Post(
@@ -218,7 +219,7 @@ class MainTest {
                 getCommentThread()
             )
         )
-        val report = service.report(firstComment.id, 10)
+        service.report(firstComment.id, 10)
     }
 
     private fun getCommentDonut(): CommentDonut {

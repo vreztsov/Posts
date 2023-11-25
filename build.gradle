@@ -1,5 +1,6 @@
 plugins {
     id 'org.jetbrains.kotlin.jvm' version '1.6.10'
+    id 'org.jetbrains.kotlinx.kover' version '0.7.4'
 }
 
 group 'ru.netology'
