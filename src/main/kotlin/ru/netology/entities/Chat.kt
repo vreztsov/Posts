@@ -30,13 +30,13 @@ data class Chat(
 
 class ChatService(var currentUser: User = VkUtils.USER1) {
     private var id = 0
-    private val chats = emptyList<Chat>().toMutableList()
+    private val chats = mutableListOf<Chat>()
 
     private fun createChat(userId: Int): Chat {
         val chat = Chat(
             ++id,
             listOf(currentUser, User(userId)),
-            emptyList<Message>().toMutableList()
+            mutableListOf()
         )
         chats += chat
         return chats.last()
@@ -122,21 +122,13 @@ class ChatService(var currentUser: User = VkUtils.USER1) {
         return chats.getLastMessages()
     }
 
-    fun getMessages(userId: Int, msgQuantity: Int): List<String> {
-        val chat = chats.getByUserId(userId) ?: throw ChatNotFoundException("Chat with user #$userId does not exist")
-        var q = msgQuantity
-        val size = chat.messages.size
-        if (msgQuantity > size) {
-            q = size
-        }
-        val result = chat.messages.subList(size - q, size)
-        result.forEach {
-            if (it.peerId == currentUser.id) {
-                it.isRead = true
-            }
-        }
-        return result.map { it.text }
-    }
+    fun getMessages(userId: Int, msgQuantity: Int): List<String> =
+        chats.getByUserId(userId)
+            ?.messages
+            ?.takeLast(msgQuantity)
+            ?.onEach { it.isRead = true }
+            ?.map { it.text }
+            ?: throw ChatNotFoundException("Chat with user #$userId does not exist")
 }
 
 data class MessageChatIds(

@@ -41,8 +41,8 @@ data class NoteComment(
 
 class NoteService {
     private var id: Int = 0
-    private val notes = emptyList<Note>().toMutableList()
-    private val comments = emptyList<NoteComment>().toMutableList()
+    private val notes = mutableListOf<Note>()
+    private val comments = mutableListOf<NoteComment>()
 
     fun add(
         title: String,
@@ -130,7 +130,7 @@ class NoteService {
     }
 
     fun get(noteList: String, sort: Int = 0): List<Note> {
-        val notes = emptyList<Note>().toMutableList()
+        val notes = mutableListOf<Note>()
         val nonExistingNoteIds = StringBuilder()
         for (num in noteList.split(",")) {
             val noteId = Integer.parseInt(num)
@@ -159,7 +159,7 @@ class NoteService {
 
     fun getComments(noteId: Int, sort: Int = 0): List<NoteComment> {
         VkUtils.findIndexById(notes, noteId) ?: throw NoteNotFoundException("Note(s) #$noteId does not exist")
-        val list = emptyList<NoteComment>().toMutableList()
+        val list = mutableListOf<NoteComment>()
         for (comment in comments) {
             if (comment.noteId == noteId && comment.isPresent) {
                 list += comment

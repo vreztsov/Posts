@@ -45,9 +45,9 @@ fun whenSealed(attachment: Attachment) {
 class WallService {
 
     private var id: Int = 0
-    private var posts = emptyList<Post>().toMutableList()
-    private var comments = emptyList<Comment>().toMutableList()
-    private var reports = emptyList<Report>().toMutableList()
+    private var posts = mutableListOf<Post>()
+    private var comments = mutableListOf<Comment>()
+    private var reports = mutableListOf<Report>()
 
     fun clear() {
         id = 0
