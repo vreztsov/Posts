@@ -10,7 +10,7 @@ data class Chat(
     val messages: MutableList<Message>
 ) : Entity {
     val isWithUser = fun(userId: Int): Boolean {
-        return VkUtils.findIndexById(users, userId) != null
+        return users.any { it.id == userId }
     }
 
     val containsUnread = fun(currentUserId: Int): Boolean {
@@ -18,13 +18,9 @@ data class Chat(
     }
 
     val getLastMessage = fun(currentUserId: Int): String {
-        val msg = try {
-            messages.last().text
-        } catch (e: NoSuchElementException) {
-            "Нет сообщений"
-        }
-        val user = users.last { it.id != currentUserId }
-        return "$user \n $msg"
+        return users.last { it.id != currentUserId }.toString() +
+                " \n " +
+                (messages.lastOrNull()?.text ?: "Нет сообщений")
     }
 }
 
@@ -33,21 +29,19 @@ class ChatService(var currentUser: User = VkUtils.USER1) {
     private val chats = mutableListOf<Chat>()
 
     private fun createChat(userId: Int): Chat {
-        val chat = Chat(
-            ++id,
-            listOf(currentUser, User(userId)),
-            mutableListOf()
-        )
-        chats += chat
-        return chats.last()
+        return chats.apply {
+            add(
+                Chat(
+                    ++id,
+                    listOf(currentUser, VkUtils.getUserById(userId)),
+                    mutableListOf()
+                )
+            )
+        }.last()
     }
 
     private fun List<Chat>.getByUserId(userId: Int): Chat? {
-        return try {
-            last { it.isWithUser(userId) }
-        } catch (e: NoSuchElementException) {
-            null
-        }
+        return lastOrNull { it.isWithUser(userId) }
     }
 
     private fun List<Chat>.getLastMessages(): List<String> {
@@ -56,51 +50,55 @@ class ChatService(var currentUser: User = VkUtils.USER1) {
 
     fun sendMessage(userId: Int, text: String): MessageChatIds {
         val chat = chats.getByUserId(userId) ?: createChat(userId)
-        val message = Message(
-            ++id,
-            (System.currentTimeMillis() / 1000).toInt(),
-            userId,
-            currentUser.id,
-            text
+        return MessageChatIds(
+            chat.id,
+            chat.messages.apply {
+                add(
+                    Message(
+                        ++id,
+                        (System.currentTimeMillis() / 1000).toInt(),
+                        userId,
+                        currentUser.id,
+                        text
+                    )
+                )
+            }.last().id
         )
-        chat.messages += message
-        return MessageChatIds(chat.id, chat.messages.last().id)
     }
 
     fun editMessage(chatId: Int, messageId: Int, text: String): Boolean {
-        val messages = getMessagesList(chatId)
-        val messageIndex = VkUtils.findIndexById(messages, messageId)
-            ?: throw MessageNotFoundException("Message #$messageId does not exist")
-        if (messages[messageIndex].fromId == currentUser.id) {
-            messages[messageIndex] = messages[messageIndex].copy(text = text)
-            return true
-        }
-        return false
+        val index = getMessagesList(chatId)
+            .indexOfFirst { it.id == messageId }
+            .also { if (it == -1) throw MessageNotFoundException("Message #$messageId does not exist") }
+        return getMessagesList(chatId)
+            .let {
+                if (it[index].fromId == currentUser.id) {
+                    it[index] = it[index].copy(text = text)
+                    true
+                } else false
+            }
     }
 
     fun readMessage(chatId: Int, messageId: Int): Boolean {
-        val messages = getMessagesList(chatId)
-        val messageIndex = VkUtils.findIndexById(messages, messageId)
-            ?: throw MessageNotFoundException("Message #$messageId does not exist")
-        if (!messages[messageIndex].isRead && messages[messageIndex].peerId == currentUser.id) {
-            messages[messageIndex].isRead = true
-            return true
-        }
-        return false
+        return getMessagesList(chatId)
+            .find { it.id == messageId }
+            ?.let {
+                if (!it.isRead && it.peerId == currentUser.id) {
+                    it.isRead = true
+                    true
+                } else false
+            } ?: throw MessageNotFoundException("Message #$messageId does not exist")
     }
 
     fun deleteMessage(chatId: Int, messageId: Int): Boolean {
-        val messages = getMessagesList(chatId)
-        val messageIndex = VkUtils.findIndexById(messages, messageId)
-            ?: throw MessageNotFoundException("Message #$messageId does not exist")
-        val deletingMessage = messages[messageIndex]
-        return (messages.removeAt(messageIndex) === deletingMessage)
+        return getMessagesList(chatId)
+            .removeIf { it.id == messageId }
+            .also { if (!it) throw MessageNotFoundException("Message #$messageId does not exist") }
     }
 
     private fun getMessagesList(chatId: Int): MutableList<Message> {
-        val chatIndex =
-            VkUtils.findIndexById(chats, chatId) ?: throw ChatNotFoundException("Chat #$chatId does not exist")
-        return chats[chatIndex].messages
+        return chats.find { it.id == chatId }?.messages
+            ?: throw ChatNotFoundException("Chat #$chatId does not exist")
     }
 
     fun getChats(): List<Chat> {
@@ -112,10 +110,9 @@ class ChatService(var currentUser: User = VkUtils.USER1) {
     }
 
     fun delete(chatId: Int): Boolean {
-        val chatIndex =
-            VkUtils.findIndexById(chats, chatId) ?: throw ChatNotFoundException("Chat #$chatId does not exist")
-        val chat = chats[chatIndex]
-        return chats.removeAt(chatIndex) === chat
+        return chats
+            .removeIf { it.id == chatId }
+            .also { if (!it) throw ChatNotFoundException("Chat #$chatId does not exist") }
     }
 
     fun getLastMessages(): List<String> {

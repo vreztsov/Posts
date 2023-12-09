@@ -50,53 +50,56 @@ class NoteService {
         privacy: Int = 0,
         commentPrivacy: Int = 0,
     ): Int {
-        val note = Note(
-            id = ++id,
-            title,
-            text,
-            (System.currentTimeMillis() / 1000).toInt(),
-            0,
-            0,
-            "https://vk.com/note33546456"
-        )
-        note.privacy = privacy
-        note.commentPrivacy = commentPrivacy
-        notes += note
-        return notes.last().id
+        return notes.apply {
+            val note = Note(
+                id = ++id,
+                title,
+                text,
+                (System.currentTimeMillis() / 1000).toInt(),
+                0,
+                0,
+                "https://vk.com/note33546456"
+            )
+            note.privacy = privacy
+            note.commentPrivacy = commentPrivacy
+            add(note)
+        }.last().id
     }
 
     fun createComment(noteId: Int, message: String): Int {
-        VkUtils.findIndexById(notes, noteId) ?: throw NoteNotFoundException("Note #$noteId does not exist")
+        if (notes.none { it.id == noteId }) throw NoteNotFoundException("Note #$noteId does not exist")
         if (message.length < 2) {
             throw CommentException("Comment must be at least 2 characters in length")
         }
-        val comment = NoteComment(++id, noteId, message)
-        comments += comment
-        return comments.last().id
+        return comments
+            .apply {
+                add(NoteComment(++id, noteId, message))
+            }
+            .last().id
     }
 
     fun delete(noteId: Int): Boolean {
-        val note =
-            notes[VkUtils.findIndexById(notes, noteId) ?: throw NoteNotFoundException("Note #$noteId does not exist")]
-        if (notes.remove(note)) {
-            for (comment in comments) {
-                if (comment.noteId == noteId) {
-                    deleteComment(comment.id)
+        return notes
+            .removeIf { it.id == noteId }
+            .also { removed ->
+                if (!removed) {
+                    throw NoteNotFoundException("Note #$noteId does not exist")
+                } else {
+                    comments
+                        .filter { it.noteId == noteId }
+                        .forEach { deleteComment(it.id) }
                 }
             }
-            return true
-        }
-        return false
     }
 
     fun deleteComment(commentId: Int): Boolean {
-        val comment = comments[VkUtils.findIndexById(comments, commentId)
-            ?: throw CommentNotFoundException("Comment #$commentId does not exist")]
-        if (comment.isPresent) {
-            comment.isPresent = false
-            return true
-        }
-        throw CommentNotFoundException("Comment #$commentId was already deleted")
+        return comments.find { it.id == commentId }
+            ?.let {
+                if (it.isPresent) {
+                    it.isPresent = false
+                    true
+                } else throw CommentNotFoundException("Comment #$commentId was already deleted")
+            } ?: throw CommentNotFoundException("Comment #$commentId does not exist")
     }
 
     fun edit(
@@ -106,80 +109,76 @@ class NoteService {
         privacy: Int = 0,
         commentPrivacy: Int = 0,
     ): Boolean {
-        val note =
-            notes[VkUtils.findIndexById(notes, id) ?: throw NoteNotFoundException("Note #$id does not exist")]
-        val newNote = note.copy(title = title, text = text)
-        newNote.privacy = privacy
-        newNote.commentPrivacy = commentPrivacy
-        return (notes.set(notes.indexOf(note), newNote) === note)
+        val index = notes
+            .indexOfFirst { it.id == id }
+            .also { if (it == -1) throw NoteNotFoundException("Note #$id does not exist") }
+        return notes
+            .let {
+                notes[index] = notes[index]
+                    .copy(title = title, text = text)
+                    .also {
+                        it.privacy = privacy
+                        it.commentPrivacy = commentPrivacy
+                    }
+                true
+            }
     }
 
     fun editComment(commentId: Int, message: String): Boolean {
-        val commentIndex = VkUtils.findIndexById(comments, commentId)
-            ?: throw CommentNotFoundException("Comment #$commentId does not exist")
-        val comment = comments[commentIndex]
-        if (comment.isPresent) {
-            if (message.length < 2) {
-                throw CommentException("Comment must be at least 2 characters in length")
-            }
-            val newComment = comment.copy(message = message)
-            comments[commentIndex] = newComment
-            return true
+        val index = comments.indexOfFirst { it.id == commentId }
+            .also { if (it == -1) throw CommentNotFoundException("Comment #$commentId does not exist") }
+        return comments.let {
+            if (comments[index].isPresent) {
+                if (message.length < 2) {
+                    throw CommentException("Comment must be at least 2 characters in length")
+                }
+                comments[index] = comments[index].copy(message = message)
+                true
+            } else throw CommentNotFoundException("Comment #$commentId was already deleted")
         }
-        throw CommentNotFoundException("Comment #$commentId was already deleted")
     }
 
     fun get(noteList: String, sort: Int = 0): List<Note> {
-        val notes = mutableListOf<Note>()
-        val nonExistingNoteIds = StringBuilder()
-        for (num in noteList.split(",")) {
-            val noteId = Integer.parseInt(num)
-            val noteIndex = VkUtils.findIndexById(this.notes, noteId)
-            if (noteIndex != null) {
-                notes += this.notes[noteIndex]
-            } else {
-                if (nonExistingNoteIds.isNotEmpty()) {
-                    nonExistingNoteIds.append(", ")
-                }
-                nonExistingNoteIds.append("#$noteId")
+        val pair = noteList.split(",")
+            .map { Integer.parseInt(it) }
+            .partition { i ->
+                notes.any { it.id == i }
             }
-        }
-        if (nonExistingNoteIds.isNotEmpty()) {
+        if (pair.second.isNotEmpty()) {
+            val nonExistingNoteIds = pair.second
+                .joinToString(separator = ", ", transform = { it.toString() })
             throw NoteNotFoundException("Note(s) $nonExistingNoteIds does not exist")
         }
-        notes.sortWith(NoteDateComparator(sort))
-        return notes
+        return pair.first
+            .map { notes.find { note -> note.id == it }!! }
+            .toMutableList()
+            .apply {
+                sortWith(NoteDateComparator(sort))
+            }
     }
 
     fun getById(noteId: Int): Note {
-        val index =
-            VkUtils.findIndexById(notes, noteId) ?: throw NoteNotFoundException("Note(s) #$noteId does not exist")
-        return notes[index]
+        return notes.find { it.id == noteId } ?: throw NoteNotFoundException("Note(s) #$noteId does not exist")
     }
 
     fun getComments(noteId: Int, sort: Int = 0): List<NoteComment> {
-        VkUtils.findIndexById(notes, noteId) ?: throw NoteNotFoundException("Note(s) #$noteId does not exist")
-        val list = mutableListOf<NoteComment>()
-        for (comment in comments) {
-            if (comment.noteId == noteId && comment.isPresent) {
-                list += comment
-            }
-        }
-        list.sortWith(NoteCommentDateComparator(sort))
-        return list
+        if (notes.none { it.id == noteId }) throw NoteNotFoundException("Note(s) #$noteId does not exist")
+        return comments.filter { it.noteId == noteId && it.isPresent }
+            .toMutableList()
+            .apply { sortWith(NoteCommentDateComparator(sort)) }
     }
 
     fun restoreComment(commentId: Int): Boolean {
-        val index = VkUtils.findIndexById(comments, commentId)
-            ?: throw CommentNotFoundException("Comment #$commentId does not exist")
-        val comment = comments[index]
-        if (!comment.isPresent) {
-            VkUtils.findIndexById(notes, comment.noteId)
-                ?: throw NoteNotFoundException("Note for comment #$commentId was deleted")
-            comment.isPresent = true
-            return true
-        }
-        return false
+        return comments.find { it.id == commentId }
+            ?.let {
+                if (!it.isPresent) {
+                    if (notes.none { note -> note.id == it.noteId }) {
+                        throw NoteNotFoundException("Note for comment #$commentId was deleted")
+                    }
+                    it.isPresent = true
+                    true
+                } else false
+            } ?: throw CommentNotFoundException("Comment #$commentId does not exist")
     }
 }
 
