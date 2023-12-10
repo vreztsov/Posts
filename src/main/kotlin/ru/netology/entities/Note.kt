@@ -49,8 +49,8 @@ class NoteService {
         text: String,
         privacy: Int = 0,
         commentPrivacy: Int = 0,
-    ): Int {
-        return notes.apply {
+    ): Int =
+        notes.apply {
             val note = Note(
                 id = ++id,
                 title,
@@ -64,7 +64,7 @@ class NoteService {
             note.commentPrivacy = commentPrivacy
             add(note)
         }.last().id
-    }
+
 
     fun createComment(noteId: Int, message: String): Int {
         if (notes.none { it.id == noteId }) throw NoteNotFoundException("Note #$noteId does not exist")
@@ -78,8 +78,8 @@ class NoteService {
             .last().id
     }
 
-    fun delete(noteId: Int): Boolean {
-        return notes
+    fun delete(noteId: Int): Boolean =
+        notes
             .removeIf { it.id == noteId }
             .also { removed ->
                 if (!removed) {
@@ -90,17 +90,17 @@ class NoteService {
                         .forEach { deleteComment(it.id) }
                 }
             }
-    }
 
-    fun deleteComment(commentId: Int): Boolean {
-        return comments.find { it.id == commentId }
+
+    fun deleteComment(commentId: Int): Boolean =
+        comments.find { it.id == commentId }
             ?.let {
                 if (it.isPresent) {
                     it.isPresent = false
                     true
                 } else throw CommentNotFoundException("Comment #$commentId was already deleted")
             } ?: throw CommentNotFoundException("Comment #$commentId does not exist")
-    }
+
 
     fun edit(
         id: Int,
@@ -138,28 +138,30 @@ class NoteService {
         }
     }
 
-    fun get(noteList: String, sort: Int = 0): List<Note> {
-        val pair = noteList.split(",")
+    fun get(noteList: String, sort: Int = 0): List<Note> =
+        noteList
+            .split(",")
             .map { Integer.parseInt(it) }
             .partition { i ->
                 notes.any { it.id == i }
-            }
-        if (pair.second.isNotEmpty()) {
-            val nonExistingNoteIds = pair.second
-                .joinToString(separator = ", ", transform = { it.toString() })
-            throw NoteNotFoundException("Note(s) $nonExistingNoteIds does not exist")
-        }
-        return pair.first
+            }.apply {
+                second
+                    .joinToString(separator = ", ", transform = { it.toString() })
+                    .also {
+                        if (it.isNotEmpty()) {
+                            throw NoteNotFoundException("Note(s) $it does not exist")
+                        }
+                    }
+            }.first
             .map { notes.find { note -> note.id == it }!! }
             .toMutableList()
             .apply {
                 sortWith(NoteDateComparator(sort))
             }
-    }
 
-    fun getById(noteId: Int): Note {
-        return notes.find { it.id == noteId } ?: throw NoteNotFoundException("Note(s) #$noteId does not exist")
-    }
+    fun getById(noteId: Int): Note =
+        notes.find { it.id == noteId } ?: throw NoteNotFoundException("Note(s) #$noteId does not exist")
+
 
     fun getComments(noteId: Int, sort: Int = 0): List<NoteComment> {
         if (notes.none { it.id == noteId }) throw NoteNotFoundException("Note(s) #$noteId does not exist")
@@ -168,8 +170,8 @@ class NoteService {
             .apply { sortWith(NoteCommentDateComparator(sort)) }
     }
 
-    fun restoreComment(commentId: Int): Boolean {
-        return comments.find { it.id == commentId }
+    fun restoreComment(commentId: Int): Boolean =
+        comments.find { it.id == commentId }
             ?.let {
                 if (!it.isPresent) {
                     if (notes.none { note -> note.id == it.noteId }) {
@@ -179,7 +181,7 @@ class NoteService {
                     true
                 } else false
             } ?: throw CommentNotFoundException("Comment #$commentId does not exist")
-    }
+
 }
 
 class NoteDateComparator(
@@ -187,9 +189,9 @@ class NoteDateComparator(
 ) : Comparator<Note> {
     private val comparator = DateComparator(sort)
 
-    override fun compare(o1: Note, o2: Note): Int {
-        return comparator.compare(o1.date, o2.date)
-    }
+    override fun compare(o1: Note, o2: Note): Int =
+        comparator.compare(o1.date, o2.date)
+
 }
 
 class NoteCommentDateComparator(
@@ -198,9 +200,9 @@ class NoteCommentDateComparator(
 
     private val comparator = DateComparator(sort)
 
-    override fun compare(o1: NoteComment, o2: NoteComment): Int {
-        return comparator.compare(o1.date, o2.date)
-    }
+    override fun compare(o1: NoteComment, o2: NoteComment): Int =
+        comparator.compare(o1.date, o2.date)
+
 }
 
 class DateComparator(
@@ -216,11 +218,11 @@ class DateComparator(
         )
     }
 
-    override fun compare(o1: Int, o2: Int): Int {
-        return when {
+    override fun compare(o1: Int, o2: Int): Int =
+        when {
             o1 == o2 -> 0
             o1 > o2 -> 1 * sign
             else -> -1 * sign
         }
-    }
+
 }
