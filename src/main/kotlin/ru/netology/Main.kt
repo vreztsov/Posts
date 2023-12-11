@@ -1,7 +1,13 @@
 package ru.netology
 
+import ru.netology.attachments.*
+import ru.netology.exceptions.*
+import ru.netology.entities.*
+import ru.netology.util.*
+
 fun main() {
-    WallService.add(
+    val service = WallService()
+    service.add(
         Post(
             ownerId = 2_323_445,
             fromId = 234_845,
@@ -26,8 +32,8 @@ fun main() {
     whenSealed(attachment)
 }
 
-fun whenSealed(attachment: Attachment){
-    when (attachment){
+fun whenSealed(attachment: Attachment) {
+    when (attachment) {
         is AudioAttachment -> println("This is AudioAttachment")
         is VideoAttachment -> println("This is VideoAttachment")
         is PhotoAttachment -> println("This is PhotoAttachment")
@@ -36,108 +42,32 @@ fun whenSealed(attachment: Attachment){
     }
 }
 
-data class CommentsInfo(
-    val count: Int = 0,
-    val canPost: Boolean = true,
-    val groupsCanPost: Boolean = true,
-    val canClose: Boolean = true,
-    val canOpen: Boolean = true
-)
-
-data class LikesInfo(
-    val count: Int = 0,
-    val userLikes: Boolean = false,
-    val canLike: Boolean = true,
-    val canPublish: Boolean = true
-)
-
-data class RepostsInfo(
-    val count: Int = 0,
-    val userReposted: Boolean = false
-)
-
-data class ViewsInfo(
-    val count: Int = 0
-)
-
-data class Copyright(
-    val id: Int,
-    val link: String,
-    val name: String,
-    val type: String
-)
-
-data class PostSource(
-    val type: String,
-    val platform: String,
-    val data: String,
-    val url: String
-)
-
-data class Geo(
-    val type: String,
-    val coordinates: String,
-    val place: Place
-)
-
-data class Place(
-    val id: Int,
-    val title: String,
-    val latitude: Int,
-    val longitude: Int,
-    val created: Int,
-    val icon: String,
-    val country: String,
-    val city: String
-)
-
-data class Donut(
-    val isDonut: Boolean,
-    val paidDuration: Int,
-    val placeholder: Any,
-    val canPublishFreeCopy: Boolean,
-    val editMode: String
-)
-
-data class Post(
-    val id: Int? = null,
-    val ownerId: Int,
-    val fromId: Int,
-    val createdBy: Int,
-    val date: Int,
-    val text: String,
-    val replyOwnerId: Int? = null,
-    val replyPostId: Int? = null,
-    val friendsOnly: Boolean = false,
-    val comments: CommentsInfo = CommentsInfo(),
-    val copyright: Copyright? = null,
-    val likes: LikesInfo = LikesInfo(),
-    val reposts: RepostsInfo = RepostsInfo(),
-    val views: ViewsInfo = ViewsInfo(),
-    val postType: String = "post",
-    val postSource: PostSource? = null,
-    val attachments: Array<Attachment> = emptyArray(),
-    val geo: Geo? = null,
-    val signerId: Int? = null,
-    val copyHistory: Array<Post> = emptyArray(),
-    val canPin: Boolean = false,
-    val canDelete: Boolean = true,
-    val canEdit: Boolean = true,
-    val isPinned: Boolean = false,
-    val markedAsAds: Boolean = false,
-    val isFavourite: Boolean = false,
-    val donut: Donut? = null,
-    val postponedId: Int? = null
-)
-
-object WallService {
+class WallService {
 
     private var id: Int = 0
-    private var posts = emptyArray<Post>()
+    private var posts = mutableListOf<Post>()
+    private var comments = mutableListOf<Comment>()
+    private var reports = mutableListOf<Report>()
 
     fun clear() {
         id = 0
-        posts = emptyArray()
+        posts.clear()
+        comments.clear()
+        reports.clear()
+    }
+
+    fun createComment(postId: Int, comment: Comment): Comment {
+        if (VkUtils.findIndexById(posts, postId) != null) {
+            comments += comment.copy(id = ++id)
+            return comments.last()
+        }
+        throw PostNotFoundException("No post with id $postId")
+    }
+
+    fun report(commentId: Int, reason: Int): Report{
+        val comment = comments[VkUtils.findIndexById(comments,commentId) ?: throw CommentNotFoundException("No comment with id $commentId")]
+        reports += Report(comment.fromId, comment.id, reason)
+        return reports.last()
     }
 
     fun add(post: Post): Post {
@@ -153,5 +83,21 @@ object WallService {
             }
         }
         return false
+    }
+}
+
+data class Report(
+    val ownerId: Int,
+    val commentId: Int
+) {
+    private var reason: Int? = null
+    private val reasons = arrayOf(0,1,2,3,4,5,6,8)
+
+    constructor(ownerId: Int, commentId: Int, reason: Int): this(ownerId, commentId){
+        if (reasons.contains(reason)) {
+            this.reason = reason
+        } else {
+            throw ReasonNotFoundException("Reason #$reason is not found")
+        }
     }
 }
